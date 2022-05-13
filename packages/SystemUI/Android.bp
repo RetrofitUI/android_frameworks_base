@@ -204,6 +204,7 @@ android_library {
         "lottie",
         "LowLightDreamLib",
         "motion_tool_lib",
+        "guava",
         "notification_flags_lib",
         "vendor.lineage.powershare-V1.0-java",
     ],
