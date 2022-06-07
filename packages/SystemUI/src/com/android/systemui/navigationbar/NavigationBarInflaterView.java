@@ -19,11 +19,13 @@ package com.android.systemui.navigationbar;
 import static android.view.ViewGroup.LayoutParams.MATCH_PARENT;
 import static android.view.WindowManagerPolicyConstants.NAV_BAR_MODE_3BUTTON;
 import static android.view.WindowManagerPolicyConstants.NAV_BAR_MODE_GESTURAL;
+import static android.view.WindowManagerPolicyConstants.NAV_BAR_MODE_GESTURAL_OVERLAY;
 
 import android.annotation.Nullable;
 import android.app.ActivityManager;
 import android.content.Context;
 import android.content.om.IOverlayManager;
+import android.content.om.OverlayInfo;
 import android.content.res.Configuration;
 import android.database.ContentObserver;
 import android.graphics.drawable.Icon;
@@ -114,6 +116,9 @@ public class NavigationBarInflaterView extends FrameLayout {
 
     private final Listener mListener;
 
+    private static final String KEY_NAVIGATION_SPACE =
+            "system:" + Settings.System.NAVIGATION_BAR_IME_SPACE;
+            
     protected LayoutInflater mLayoutInflater;
     protected LayoutInflater mLandscapeInflater;
 
@@ -137,7 +142,9 @@ public class NavigationBarInflaterView extends FrameLayout {
     private boolean mIsHintEnabled;
 
     private final ContentObserver mContentObserver;
-
+    
+    private boolean mIsAttachedToWindow;
+    
     public NavigationBarInflaterView(Context context, AttributeSet attrs) {
         super(context, attrs);
         createInflaters();
@@ -221,14 +228,49 @@ public class NavigationBarInflaterView extends FrameLayout {
                 mContentObserver);
         mContentObserver.onChange(true, navBarInverse);
         mContentObserver.onChange(true, navigationBarHint);
+        Dependency.get(TunerService.class).addTunable(this, KEY_NAVIGATION_SPACE);
+        mIsAttachedToWindow = true;
     }
 
     @Override
     protected void onDetachedFromWindow() {
+        mIsAttachedToWindow = false;
         Dependency.get(NavigationModeController.class).removeListener(mListener);
         mContext.getContentResolver().unregisterContentObserver(mContentObserver);
         super.onDetachedFromWindow();
     }
+    
+    @Override
+    public void onTuningChanged(String key, String newValue) {
+        if (NAV_BAR_INVERSE.equals(key)) {
+            mInverseLayout = TunerService.parseIntegerSwitch(newValue, false);
+            updateLayoutInversion();
+        }else if(NAV_BAR_COMPACT.equals(key)){
+            boolean compactLayout = TunerService.parseIntegerSwitch(newValue, false);
+            if (compactLayout != mCompactLayout){
+                mCompactLayout = compactLayout;
+                setNavigationBarLayout(getDefaultLayout());
+            }
+        } else if (KEY_NAVIGATION_HINT.equals(key)) {
+            mIsHintEnabled = TunerService.parseIntegerSwitch(newValue, true);
+            updateHint();
+            onLikelyDefaultLayoutChange();
+        } else if (GESTURE_NAVBAR_LENGTH_MODE.equals(key)) {
+            mHomeHandleWidthMode = TunerService.parseInteger(newValue, 1);
+            onLikelyDefaultLayoutChange();
+        } else if (GESTURE_NAVBAR_RADIUS.equals(key)) {
+            onLikelyDefaultLayoutChange();
+        } else if (mIsAttachedToWindow &&
+                mNavBarMode == NAV_BAR_MODE_GESTURAL && KEY_NAVIGATION_SPACE.equals(key)) {
+            int state = TunerService.parseInteger(newValue, 0);
+            String overlay = NAV_BAR_MODE_GESTURAL_OVERLAY;
+            switch (state) {
+                case 1:  // narrow
+                    overlay += "_narrow_back";
+                    break;
+                case 2:  // hidden
+                    overlay += "_wide_back";
+            }
 
     @Override
     public void onConfigurationChanged(Configuration newConfig) {
