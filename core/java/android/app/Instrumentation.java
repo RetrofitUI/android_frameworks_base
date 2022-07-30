@@ -71,7 +71,8 @@ import java.util.Objects;
 import java.util.StringJoiner;
 import java.util.concurrent.TimeoutException;
 
-import com.android.internal.util.sakura.PixelPropsUtils;
+import com.android.internal.util.retrofit.PixelPropsUtils;
+import com.android.internal.util.retrofit.MeizuPropsUtils;
 
 /**
  * Base class for implementing application instrumentation code.  When running
@@ -1348,6 +1349,7 @@ public class Instrumentation {
         app.attach(context);
         String packageName = context.getPackageName();
         PixelPropsUtils.setProps(packageName);
+        MeizuPropsUtils.setProps(app);
         return app;
     }
     
@@ -1367,6 +1369,7 @@ public class Instrumentation {
         app.attach(context);
         String packageName = context.getPackageName();
         PixelPropsUtils.setProps(packageName);
+        MeizuPropsUtils.setProps(app);
         return app;
     }
 
